@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Telemoto" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#0B0E11</item>
+        <item name="android:statusBarColor">#0B0E11</item>
+        <item name="android:navigationBarColor">#0B0E11</item>
+    </style>
+    <style name="Theme.Telemoto.Translucent" parent="android:Theme.Translucent.NoTitleBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+</resources>
