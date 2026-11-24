@@ -98,7 +98,7 @@ fun RideMap(
             mv.setTileSource(TileSourceFactory.MAPNIK)
             mv.setMultiTouchControls(true)
             mv.zoomController.setVisibility(org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER)
-            if (!tm.light) mv.overlayManager.tilesOverlay.setColorFilter(TilesOverlay.INVERTED_COLORS)
+            if (!tm.light) mv.overlayManager.tilesOverlay.setColorFilter(TilesOverlay.INVERT_COLORS)
             val marker = MarkerOverlay(tm)
             holder[0] = MapHolder(mv, marker)
             buildRoute(mv, pts, tm)
