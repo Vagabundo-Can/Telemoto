@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -25,6 +28,16 @@ jobs:
         with:
           name: telemoto-apk
           path: telemoto-0.1.${{ github.run_number }}.apk
+      - name: GitHub Release (telefondan indirilebilir)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.${{ github.run_number }}
+          name: Telemoto 0.1.${{ github.run_number }}
+          body: |
+            Otomatik derleme · ${{ github.sha }}
+            Kurulum: APK'yı indir → aç → "Bilinmeyen kaynaklara izin ver".
+          files: telemoto-0.1.${{ github.run_number }}.apk
+          make_latest: true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
