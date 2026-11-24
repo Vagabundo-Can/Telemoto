@@ -64,6 +64,13 @@ class CoreTest {
     }
 
     @Test
+    fun wearProtocol_roundTrip() {
+        val s = com.vagabundo.telemoto.data.WearProtocol.State("RECORDING", "ECO", 123456, 18_600.0, 46, -12, 84, 41, 47, 128, true, "a|b")
+        val d = com.vagabundo.telemoto.data.WearProtocol.decode(com.vagabundo.telemoto.data.WearProtocol.encode(s))!!
+        assertEquals(s.copy(message = "a/b", distanceM = 18_600.0), d)
+    }
+
+    @Test
     fun calibration_rejectsPortraitPhone() {
         val accel = List(200) { V3(0.0, g, 0.0) }     // dikey: +y yukarı
         val gyro = List(200) { V3.ZERO }
@@ -155,12 +162,17 @@ class CoreTest {
         RideLogFormat.writeHeader(w, h)
         synthRide().take(50).forEach { RideLogFormat.writeSample(w, it) }
         RideLogFormat.writeEvent(w, com.vagabundo.telemoto.data.MarkEvent(400, "MARK"))
+        RideLogFormat.writeHr(w, com.vagabundo.telemoto.data.HrSample(500, 128))
+        RideLogFormat.writeHr(w, com.vagabundo.telemoto.data.HrSample(1500, 131))
         w.flush()
         val p = RideLogFormat.read(BufferedReader(StringReader(sw.toString())))
         assertEquals("Ev → İş", p.header.name)
         assertEquals(RideMode.ECO, p.header.mode)
         assertEquals(50, p.samples.size)
         assertEquals(1, p.events.size)
+        assertEquals(2, p.hr.size)
+        assertEquals(131, p.hrAt(1400))
+        assertEquals(null, p.hrAt(60_000))
         assertNotNull(p.samples.firstOrNull())
         assertTrue(abs(p.samples[10].lat - synthRide()[10].lat) < 1e-6)
     }

@@ -31,7 +31,9 @@ import com.vagabundo.telemoto.TelemotoApp
 import com.vagabundo.telemoto.analysis.EventType
 import com.vagabundo.telemoto.analysis.FuelModel
 import com.vagabundo.telemoto.analysis.RideAnalyzer
+import com.vagabundo.telemoto.data.HrSample
 import com.vagabundo.telemoto.data.MarkEvent
+import com.vagabundo.telemoto.data.WearProtocol
 import com.vagabundo.telemoto.data.RideHeader
 import com.vagabundo.telemoto.data.RideLogFormat
 import com.vagabundo.telemoto.data.RideMode
@@ -111,6 +113,10 @@ class RecordingService : Service(), SensorEventListener, LocationListener {
     private var drLon = 0.0
 
     private var lastUiMs = 0L
+    private var lastWearMs = 0L
+    private var lastHrWrittenAt = 0L
+    private var lastEcoHarsh = 0
+    private var lastGpsOk = true
     private var lastNotifMs = 0L
     private var lastFlushMs = 0L
     private var stopArmedAt = 0L
@@ -156,6 +162,7 @@ class RecordingService : Service(), SensorEventListener, LocationListener {
                     stopArmedAt = now
                     RideSession.update { it.copy(stopArmed = true) }
                     app.speaker.say("Durdurmak için tekrar bas")
+                    WearBridge.sendEvent(this, WearProtocol.EVT_STOP_ARMED)
                     updateNotification(force = true)
                     h.postDelayed({ RideSession.update { it.copy(stopArmed = false) }; updateNotification(true) }, 5000)
                 }
@@ -190,6 +197,7 @@ class RecordingService : Service(), SensorEventListener, LocationListener {
         }
         sensorsOn = true
         RideSession.update { it.copy(phase = Phase.WARMUP, mode = mode, calibMessage = "Motoru dik tut ve kalibre et", lastSavedId = null) }
+        WearBridge.sendState(this, RideSession.flow.value)
         h.post(tick)
     }
 
@@ -218,10 +226,12 @@ class RecordingService : Service(), SensorEventListener, LocationListener {
         val r = Calibrator.compute(accBuf.toList(), gyroBuf.toList())
         if (r.ok) {
             RideSession.update { it.copy(phase = Phase.READY, calib = r, calibMessage = r.message, calibProgress = 1f) }
+            WearBridge.sendEvent(this, WearProtocol.EVT_CALIBRATED)
             if (autoStartAfterCalib) startRecording() else app.speaker.say("Kalibre edildi")
         } else {
             RideSession.update { it.copy(phase = Phase.WARMUP, calib = null, calibMessage = r.message, calibProgress = 0f) }
             app.speaker.say("Kalibrasyon başarısız. ${r.message}")
+            WearBridge.sendEvent(this, WearProtocol.EVT_CAL_FAIL)
         }
         updateNotification(true)
     }
@@ -253,6 +263,9 @@ class RecordingService : Service(), SensorEventListener, LocationListener {
             LiveState(phase = Phase.RECORDING, mode = mode, calib = c, calibMessage = c.message, gpsFix = haveFix, gpsAccuracyM = fixAcc)
         }
         app.speaker.say(if (mode == RideMode.ECO) "Ekonomi kaydı başladı" else "Performans kaydı başladı")
+        lastEcoHarsh = 0; lastGpsOk = true; lastHrWrittenAt = 0L
+        WearBridge.sendEvent(this, WearProtocol.EVT_STARTED)
+        WearBridge.sendState(this, RideSession.flow.value)
         updateNotification(true)
     }
 
@@ -264,6 +277,7 @@ class RecordingService : Service(), SensorEventListener, LocationListener {
         a.addMark(t)
         RideSession.update { it.copy(marks = it.marks + 1) }
         app.speaker.say("İşaretlendi")
+        WearBridge.sendEvent(this, WearProtocol.EVT_MARKED)
     }
 
     private fun stopRecording() {
@@ -282,12 +296,18 @@ class RecordingService : Service(), SensorEventListener, LocationListener {
                 savedId = hdr.id
                 val km = st.distanceM / 1000.0
                 app.speaker.say("Kayıt durdu. ${"%.1f".format(Locale("tr", "TR"), km)} kilometre")
+                val payload = if (hdr.mode == RideMode.ECO)
+                    WearProtocol.stoppedPayload(hdr.mode, km, "Akıcılık ${st.ecoScore ?: "—"}", "Dur-kalk ${st.stops}")
+                else
+                    WearProtocol.stoppedPayload(hdr.mode, km, "L ${st.maxLeanLeft.toInt()}° · S ${st.maxLeanRight.toInt()}°", "${st.cornerCount} viraj")
+                WearBridge.sendEvent(this, payload)
             } else {
                 app.store.delete(hdr.id)
                 app.speaker.say("Kayıt çok kısa, silindi")
             }
         }
         RideSession.state.value = LiveState(phase = Phase.IDLE, lastSavedId = savedId)
+        WearBridge.sendState(this, RideSession.flow.value)
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -295,6 +315,7 @@ class RecordingService : Service(), SensorEventListener, LocationListener {
     private fun cancelAll() {
         releaseSensors()
         RideSession.state.value = LiveState(phase = Phase.IDLE)
+        WearBridge.sendState(this, RideSession.flow.value)
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -335,6 +356,7 @@ class RecordingService : Service(), SensorEventListener, LocationListener {
             }
         }
         if (nowE - lastNotifMs > 2000) updateNotification()
+        if (nowE - lastWearMs > 1000) { lastWearMs = nowE; WearBridge.sendState(this, RideSession.flow.value) }
     }
 
     private fun recordTick(nowE: Long) {
@@ -361,6 +383,10 @@ class RecordingService : Service(), SensorEventListener, LocationListener {
         freshFix = false
         RideLogFormat.writeSample(w, s)
         a.push(s)
+        if (WearBridge.lastHrAt > lastHrWrittenAt && WearBridge.currentHr() > 0) {
+            lastHrWrittenAt = WearBridge.lastHrAt
+            RideLogFormat.writeHr(w, HrSample(t, WearBridge.lastHr))
+        }
 
         if (nowE - lastFlushMs > 5000) { lastFlushMs = nowE; runCatching { w.flush() } }
         if (nowE - lastUiMs > 200) {
@@ -380,10 +406,21 @@ class RecordingService : Service(), SensorEventListener, LocationListener {
                     ecoAccel = a.eventCount(EventType.ECO_ACCEL), ecoBrake = a.eventCount(EventType.ECO_BRAKE),
                     pke = a.pke, fuelLPer100 = fuel,
                     gpsFix = haveFix && nowE - fixElapsed < 3000, gpsAccuracyM = fixAcc,
+                    hr = WearBridge.currentHr(),
                 )
             }
         }
         if (nowE - lastNotifMs > 1000) updateNotification()
+        if (nowE - lastWearMs > 1000) {
+            lastWearMs = nowE
+            val st = RideSession.flow.value
+            WearBridge.sendState(this, st)
+            val harsh = st.ecoAccel + st.ecoBrake
+            if (mode == RideMode.ECO && app.prefs.value.ecoCoachVibrate && harsh > lastEcoHarsh) WearBridge.sendEvent(this, WearProtocol.EVT_ECO_HARSH)
+            lastEcoHarsh = harsh
+            if (lastGpsOk && !st.gpsFix && t > 15_000) WearBridge.sendEvent(this, WearProtocol.EVT_GPS_LOST)
+            lastGpsOk = st.gpsFix
+        }
     }
 
     // ---------- Sensörler ----------

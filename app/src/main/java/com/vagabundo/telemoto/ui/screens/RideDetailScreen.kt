@@ -197,6 +197,14 @@ fun RideDetailScreen(id: String, onBack: () -> Unit) {
                 }
             }
 
+            if (d.parsed.hr.isNotEmpty() && cur != null) {
+                val bpm = d.parsed.hrAt(cur.t)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("♥ ${bpm ?: "—"} bpm", color = t.red, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Text("ort ${d.parsed.hr.map { it.bpm }.average().toInt()} · maks ${d.parsed.hr.maxOf { it.bpm }}", color = t.mute, fontSize = 12.sp)
+                }
+            }
+
             // Grafikler + kaydırıcı
             Panel(Modifier.fillMaxWidth()) {
                 Row { SmallLabel(if (tab == RideMode.PERF) "Yatış (°)" else "Boyuna ivme (g)"); Spacer(Modifier.weight(1f)); SmallLabel("Hız (km/h)") }
@@ -215,7 +223,7 @@ fun RideDetailScreen(id: String, onBack: () -> Unit) {
                 Text(if (axisKm) "${f1(d.stats.distanceM / 1000)} km" else clock(samples.lastOrNull()?.t ?: 0), color = t.mute, fontSize = 11.sp)
             }
 
-            if (tab == RideMode.PERF) PerfSection(d.stats, si) else EcoSection(d.stats, app.prefs.baseConsumption())
+            if (tab == RideMode.PERF) PerfSection(d.stats, si, d.parsed) else EcoSection(d.stats, app.prefs.baseConsumption())
             Spacer(Modifier.height(16.dp))
         }
     }
@@ -306,7 +314,7 @@ private fun Charts(d: Loaded, samples: List<Sample>, si: Int, tab: RideMode) {
 }
 
 @Composable
-private fun PerfSection(st: RideStats, si: Int) {
+private fun PerfSection(st: RideStats, si: Int, parsed: RideLogFormat.Parsed) {
     val t = LocalTm.current
     val corner: Corner? = st.corners.firstOrNull { si in it.startIdx..it.endIdx }
     Panel(Modifier.fillMaxWidth()) {
@@ -315,7 +323,8 @@ private fun PerfSection(st: RideStats, si: Int) {
                 BigValue("#${corner.no}", 22.sp, if (corner.right) t.right else t.left)
                 Column {
                     Text("Bu viraj · ${if (corner.right) "sağ" else "sol"}${if (corner.braked) " · frenli" else ""}", color = t.ink, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                    Text("Giriş ${(corner.vIn * 3.6f).toInt()} · apex ${(corner.vApex * 3.6f).toInt()} · çıkış ${(corner.vOut * 3.6f).toInt()} km/h · maks ${corner.maxLean.toInt()}°", color = t.mute, fontSize = 12.sp)
+                    val apexHr = parsed.hrAt(parsed.samples[corner.apexIdx].t)
+                    Text("Giriş ${(corner.vIn * 3.6f).toInt()} · apex ${(corner.vApex * 3.6f).toInt()} · çıkış ${(corner.vOut * 3.6f).toInt()} km/h · maks ${corner.maxLean.toInt()}°" + (apexHr?.let { " · ♥ $it" } ?: ""), color = t.mute, fontSize = 12.sp)
                 }
             }
         } else Text("Kaydırıcıyı bir virajın üstüne getir: giriş/apex/çıkış hızları burada görünür.", color = t.mute, fontSize = 12.sp)

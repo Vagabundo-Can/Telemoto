@@ -22,12 +22,14 @@ jobs:
         run: ./gradlew --no-daemon testDebugUnitTest
       - name: Build debug APK
         run: ./gradlew --no-daemon assembleDebug
-      - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk telemoto-0.1.${{ github.run_number }}.apk
+      - name: Rename APKs
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk telemoto-0.1.${{ github.run_number }}.apk
+          cp wear/build/outputs/apk/debug/wear-debug.apk telemoto-watch-0.1.${{ github.run_number }}.apk
       - uses: actions/upload-artifact@v4
         with:
           name: telemoto-apk
-          path: telemoto-0.1.${{ github.run_number }}.apk
+          path: telemoto-*.apk
       - name: GitHub Release (telefondan indirilebilir)
         uses: softprops/action-gh-release@v2
         with:
@@ -35,8 +37,9 @@ jobs:
           name: Telemoto 0.1.${{ github.run_number }}
           body: |
             Otomatik derleme · ${{ github.sha }}
-            Kurulum: APK'yı indir → aç → "Bilinmeyen kaynaklara izin ver".
-          files: telemoto-0.1.${{ github.run_number }}.apk
+            Telefon: telemoto-0.1.x.apk → indir → aç → "Bilinmeyen kaynaklara izin ver".
+            Saat: telemoto-watch-0.1.x.apk → ADB (kablosuz hata ayıklama) ile Galaxy Watch'a kur.
+          files: telemoto-*.apk
           make_latest: true
       - uses: actions/upload-artifact@v4
         if: always()

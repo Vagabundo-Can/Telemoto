@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "Telemoto"
-include(":app")
+include(":app", ":wear")

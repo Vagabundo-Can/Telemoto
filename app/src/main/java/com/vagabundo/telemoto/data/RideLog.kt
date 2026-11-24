@@ -35,6 +35,9 @@ data class Sample(
 
 data class MarkEvent(val t: Long, val type: String)
 
+/** Saatten gelen nabız örneği. */
+data class HrSample(val t: Long, val bpm: Int)
+
 /** .ridelog başlığı. Düz metin "#anahtar=değer" satırları: grep'lenebilir, overlay uygulaması da okur. */
 data class RideHeader(
     val id: String,
@@ -52,6 +55,7 @@ data class RideHeader(
  *   #cols=t_ms,lat,lon,alt,speed,lean,glon,glat,yaw,gps
  *   S,<t>,<lat>,<lon>,<alt>,<speed>,<lean>,<glon>,<glat>,<yaw>,<0|1>
  *   E,<t>,<TYPE>
+ *   H,<t>,<bpm>          (Galaxy Watch nabzı, varsa)
  */
 object RideLogFormat {
     const val MAGIC = "#telemoto-ridelog v1"
@@ -82,7 +86,20 @@ object RideLogFormat {
         w.write("E,${e.t},${e.type}"); w.newLine()
     }
 
-    class Parsed(val header: RideHeader, val samples: List<Sample>, val events: List<MarkEvent>)
+    fun writeHr(w: BufferedWriter, h: HrSample) {
+        w.write("H,${h.t},${h.bpm}"); w.newLine()
+    }
+
+    class Parsed(val header: RideHeader, val samples: List<Sample>, val events: List<MarkEvent>, val hr: List<HrSample> = emptyList()) {
+        /** t anındaki nabız (±10 sn içinde en yakın örnek) ya da null. */
+        fun hrAt(t: Long): Int? {
+            if (hr.isEmpty()) return null
+            var lo = 0; var hi = hr.size - 1
+            while (lo < hi) { val m = (lo + hi) / 2; if (hr[m].t < t) lo = m + 1 else hi = m }
+            val c = listOfNotNull(hr.getOrNull(lo), hr.getOrNull(lo - 1)).minByOrNull { kotlin.math.abs(it.t - t) } ?: return null
+            return if (kotlin.math.abs(c.t - t) <= 10_000) c.bpm else null
+        }
+    }
 
     fun read(file: File): Parsed = file.bufferedReader(Charsets.UTF_8).use { read(it) }
 
@@ -90,6 +107,7 @@ object RideLogFormat {
         val meta = HashMap<String, String>()
         val samples = ArrayList<Sample>(50_000)
         val events = ArrayList<MarkEvent>()
+        val hr = ArrayList<HrSample>()
         r.lineSequence().forEach { line ->
             when {
                 line.startsWith("#") -> {
@@ -101,6 +119,11 @@ object RideLogFormat {
                     val p = line.split(',')
                     if (p.size >= 3) p[1].toLongOrNull()?.let { events.add(MarkEvent(it, p[2])) }
                 }
+                line.startsWith("H,") -> {
+                    val p = line.split(',')
+                    val t = p.getOrNull(1)?.toLongOrNull(); val b = p.getOrNull(2)?.toIntOrNull()
+                    if (t != null && b != null && b in 30..230) hr.add(HrSample(t, b))
+                }
             }
         }
         val h = RideHeader(
@@ -111,7 +134,7 @@ object RideLogFormat {
             calib = meta["calib"] ?: "",
             appVersion = meta["app"] ?: "",
         )
-        return Parsed(h, samples, events)
+        return Parsed(h, samples, events, hr.sortedBy { it.t })
     }
 
     private fun parseSample(line: String): Sample? {

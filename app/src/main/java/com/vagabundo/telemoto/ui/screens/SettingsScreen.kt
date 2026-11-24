@@ -118,6 +118,17 @@ fun SettingsScreen() {
         }
 
         Panel(Modifier.fillMaxWidth()) {
+            SmallLabel("Galaxy Watch", t.accInk)
+            Toggle("Ekonomi koçluğu: ani hızlanma/frende saat titreşsin", s.ecoCoachVibrate) { v -> app.prefs.update { it.copy(ecoCoachVibrate = v) } }
+            Text(
+                "Saatte Telemoto: Başlat / Olay işaretle (ekrana dokun ya da Geri tuşu) / Durdur (basılı tut). " +
+                    "Kısayol: saat Ayarlar › Gelişmiş özellikler › Ana Sayfa tuşuna iki kez bas › Telemoto. " +
+                    "Nabız, saatteki uygulama kayıt sırasında açıldığında kaydedilir.",
+                color = t.mute, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+
+        Panel(Modifier.fillMaxWidth()) {
             SmallLabel("Veri", t.accInk)
             Text("Kayıt formatı: .ridelog (25 Hz, düz metin) · dışa aktarım GPX/CSV", color = t.ink, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
             Text("Klasör: ${app.store.dir.absolutePath}", color = t.mute, fontSize = 12.sp)

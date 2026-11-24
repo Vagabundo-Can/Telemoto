@@ -229,6 +229,7 @@ private fun TopBar(s: LiveState) {
             TmIcon(Ico.GPS, if (s.gpsFix) t.green else t.red, 14.dp)
             Text(if (s.gpsFix) "±${s.gpsAccuracyM.toInt()} m" else "GPS yok", color = t.mute, fontSize = 12.sp)
         }
+        if (s.hr > 0) Text("♥ ${s.hr}", color = t.red, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
         if (s.marks > 0) Text("İşaret ${s.marks}", color = t.mute, fontSize = 12.sp)
     }
 }

@@ -41,6 +41,8 @@ data class LiveState(
     val pke: Double = 0.0,
     val fuelLPer100: Double? = null,
     val marks: Int = 0,
+    /** Saatten gelen nabız (0 = yok). */
+    val hr: Int = 0,
     val stopArmed: Boolean = false,
     val lastSavedId: String? = null,
 )
