@@ -47,6 +47,12 @@ android {
     }
     testOptions {
         unitTests.isReturnDefaultValues = true
+        unitTests.isIncludeAndroidResources = true
+        unitTests.all {
+            it.systemProperty("screens", project.findProperty("screens") ?: "false")
+            it.systemProperty("roborazzi.test.record", "true")
+            it.maxHeapSize = "3g"
+        }
     }
 }
 
@@ -69,5 +75,12 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     testImplementation("junit:junit:4.13.2")
+    // Ekran görüntüsü (kılavuz) testleri: Robolectric + Roborazzi
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.32.2")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.32.2")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("androidx.test.ext:junit:1.2.1")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
     testImplementation("org.json:json:20240303")
 }

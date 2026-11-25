@@ -89,7 +89,7 @@ private class Loaded(
 )
 
 @Composable
-fun RideDetailScreen(id: String, onBack: () -> Unit) {
+fun RideDetailScreen(id: String, onBack: () -> Unit, initialFraction: Float = 0f, initialTab: RideMode? = null) {
     val t = LocalTm.current
     val ctx = LocalContext.current
     val app = ctx.applicationContext as TelemotoApp
@@ -120,8 +120,8 @@ fun RideDetailScreen(id: String, onBack: () -> Unit) {
     }
 
     val samples = d.parsed.samples
-    var tab by remember { mutableStateOf(d.parsed.header.mode) }
-    var pos by remember { mutableIntStateOf(0) }
+    var tab by remember { mutableStateOf(initialTab ?: d.parsed.header.mode) }
+    var pos by remember { mutableIntStateOf((initialFraction * (d.idx.size - 1)).toInt()) }
     var axisKm by remember { mutableStateOf(true) }
     var menu by remember { mutableStateOf(false) }
     var showShare by remember { mutableStateOf(false) }

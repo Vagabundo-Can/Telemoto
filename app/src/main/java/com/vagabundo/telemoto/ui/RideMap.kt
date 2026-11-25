@@ -90,6 +90,11 @@ fun RideMap(
     modifier: Modifier = Modifier,
 ) {
     val tm = LocalTm.current
+    if (androidx.compose.ui.platform.LocalInspectionMode.current) {
+        // Önizleme / ekran görüntüsü testi: harita karosu yok, rota çizimi
+        RoutePreview(pts, events, ecoMode, cursor, modifier)
+        return
+    }
     val holder = remember(tm.light) { arrayOfNulls<MapHolder>(1) }
     AndroidView(
         modifier = modifier,
@@ -153,4 +158,47 @@ private fun buildRoute(mv: MapView, pts: List<Sample>, tm: TmColors) {
         } else cur.add(g)
     }
     flush()
+}
+
+@Composable
+private fun RoutePreview(pts: List<Sample>, events: List<DriveEvent>, ecoMode: Boolean, cursor: Sample?, modifier: Modifier) {
+    val tm = LocalTm.current
+    androidx.compose.foundation.Canvas(modifier) {
+        drawRect(if (tm.light) androidx.compose.ui.graphics.Color(0xFFE6EBEF) else androidx.compose.ui.graphics.Color(0xFF11161B))
+        val grid = if (tm.light) androidx.compose.ui.graphics.Color(0xFFD6DDE3) else androidx.compose.ui.graphics.Color(0xFF1A2128)
+        var gx = 0f; while (gx < size.width) { drawLine(grid, androidx.compose.ui.geometry.Offset(gx, 0f), androidx.compose.ui.geometry.Offset(gx, size.height), 1f); gx += 60f }
+        var gy = 0f; while (gy < size.height) { drawLine(grid, androidx.compose.ui.geometry.Offset(0f, gy), androidx.compose.ui.geometry.Offset(size.width, gy), 1f); gy += 60f }
+        val g = pts.filter { it.lat != 0.0 }
+        if (g.size < 2) return@Canvas
+        val k = kotlin.math.cos(Math.toRadians(g[0].lat))
+        val minX = g.minOf { it.lon * k }; val maxX = g.maxOf { it.lon * k }
+        val minY = g.minOf { it.lat }; val maxY = g.maxOf { it.lat }
+        val pad = 30f
+        val s = minOf((size.width - 2 * pad) / (maxX - minX).coerceAtLeast(1e-9), (size.height - 2 * pad) / (maxY - minY).coerceAtLeast(1e-9))
+        val ox = (size.width - ((maxX - minX) * s).toFloat()) / 2; val oy = (size.height - ((maxY - minY) * s).toFloat()) / 2
+        fun p(a: Double, b: Double) = androidx.compose.ui.geometry.Offset((ox + (b * k - minX) * s).toFloat(), (oy + (maxY - a) * s).toFloat())
+        for (i in 1 until g.size) {
+            val l = g[i].lean
+            val col = when { ecoMode -> if (tm.light) androidx.compose.ui.graphics.Color(0xFF3E7C59) else androidx.compose.ui.graphics.Color(0xFF3F8F63)
+                abs(l) < 5f -> tm.neutral; l > 0 -> tm.right; else -> tm.left }
+            val a = (if (ecoMode || abs(l) < 5f) 1f else 0.45f + 0.55f * (abs(l) / 45f).coerceIn(0f, 1f))
+            drawLine(col.copy(alpha = a), p(g[i - 1].lat, g[i - 1].lon), p(g[i].lat, g[i].lon), 9f, androidx.compose.ui.graphics.StrokeCap.Round)
+        }
+        events.forEach { e ->
+            val c = p(e.lat, e.lon)
+            when {
+                ecoMode && e.type == EventType.ECO_ACCEL -> drawCircle(androidx.compose.ui.graphics.Color(0xFFFFB020), 11f, c)
+                ecoMode && e.type == EventType.ECO_BRAKE -> drawCircle(tm.red, 11f, c)
+                ecoMode && e.type == EventType.STOP -> drawCircle(tm.mute, 10f, c)
+                !ecoMode && (e.type == EventType.BRAKE || e.type == EventType.HARD_BRAKE) -> drawCircle(tm.red, 12f, c, style = androidx.compose.ui.graphics.drawscope.Stroke(4f))
+                else -> {}
+            }
+        }
+        cursor?.let {
+            val c = p(it.lat, it.lon)
+            drawCircle(androidx.compose.ui.graphics.Color(0x40FFB020), 30f, c)
+            drawCircle(androidx.compose.ui.graphics.Color(0xFFFFB020), 14f, c)
+            drawCircle(androidx.compose.ui.graphics.Color(0xFF0B0E11), 14f, c, style = androidx.compose.ui.graphics.drawscope.Stroke(3f))
+        }
+    }
 }

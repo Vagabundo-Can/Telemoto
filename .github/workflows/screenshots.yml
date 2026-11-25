@@ -1,0 +1,50 @@
+name: Kılavuz ekran görüntüleri
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'app/src/test/java/com/vagabundo/telemoto/screens/**'
+      - 'wear/src/test/**'
+      - '.github/workflows/screenshots.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Ekran görüntüleri
+        run: ./gradlew --no-daemon :app:testDebugUnitTest --tests '*ManualScreenshotTest*' :wear:testDebugUnitTest --tests '*WatchScreenshotTest*' -Pscreens=true --continue
+      - name: Paketle
+        if: always()
+        run: |
+          mkdir -p shots
+          cp app/build/screens/*.png shots/ 2>/dev/null || true
+          cp wear/build/screens/*.png shots/ 2>/dev/null || true
+          ls -la shots
+          cd shots && zip -q ../telemoto-ekranlar.zip *.png || true
+      - name: Release
+        if: always()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: screens-${{ github.run_number }}
+          name: Kılavuz ekran görüntüleri ${{ github.run_number }}
+          prerelease: true
+          make_latest: false
+          files: telemoto-ekranlar.zip
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshot-reports
+          path: |
+            app/build/reports/tests/
+            wear/build/reports/tests/
