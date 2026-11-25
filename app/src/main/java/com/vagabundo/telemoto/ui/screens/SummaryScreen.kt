@@ -122,7 +122,7 @@ fun SummaryScreen() {
             val stops = eco.sumOf { it.stops }
             val ekm = eco.sumOf { it.distanceM } / 1000
             Row(Modifier.padding(top = 8.dp)) {
-                Metric("Dur-kalk/km", if (ekm > 0.1) f2(stops / ekm) else "—", Modifier.weight(1f), size = 22.sp)
+                Metric("Duruş/km", if (ekm > 0.1) f2(stops / ekm) else "—", Modifier.weight(1f), size = 22.sp)
                 Metric("Ani hızl.", "${eco.sumOf { it.ecoAccel }}", Modifier.weight(1f), size = 22.sp)
                 Metric("Ani fren", "${eco.sumOf { it.ecoBrake }}", Modifier.weight(1f), size = 22.sp)
                 Metric("Tah. yakıt", base?.let { "${f1(it * inRange.sumOf { r -> r.distanceM } / 100_000)} L" } ?: "—", Modifier.weight(1f), size = 22.sp)

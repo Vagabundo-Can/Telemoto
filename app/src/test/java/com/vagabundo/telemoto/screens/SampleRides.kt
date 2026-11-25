@@ -30,7 +30,7 @@ object SampleRides {
         var v = 0.0; var s = 0.0; var t = 0L
         val totalS = 24_000.0
         fun kappa(x: Double): Double {
-            val base = 0.016 * sin(x / 210.0) + 0.011 * sin(x / 83.0 + 1.3) + 0.006 * sin(x / 37.0 + 0.4)
+            val base = 0.0075 * sin(x / 260.0) + 0.0055 * sin(x / 97.0 + 1.3) + 0.0025 * sin(x / 41.0 + 0.4)
             val straight = if ((x / 1500.0).toInt() % 3 == 2) 0.15 else 1.0
             return base * straight
         }
@@ -67,16 +67,18 @@ object SampleRides {
         var v = 0.0; var s = 0.0; var t = 0L
         var nextStop = 650.0 + seed * 40; var waitUntil = -1L
         var harsh = false
+        var braking = false
         while (s < km * 1000) {
             val distToStop = nextStop - s
             val a: Double
             if (waitUntil > 0) {
                 a = 0.0; v = 0.0
                 if (t >= waitUntil) { waitUntil = -1; nextStop = s + 600 + ((s.toInt() * 7 + seed * 131) % 500); harsh = ((s.toInt() + seed) % 5 == 0) }
-            } else if (distToStop < v * v / (2 * 0.2 * G) + 5) {
+            } else if (braking || distToStop < v * v / (2 * 0.2 * G) + 5) {
+                braking = true
                 val dec = if (harsh) 0.33 else 0.18
                 a = -dec * G
-                if (v < 0.4) { v = 0.0; waitUntil = t + 8_000 + (seed * 1300L % 20_000) }
+                if (v < 0.4) { v = 0.0; braking = false; waitUntil = t + 8_000 + (seed * 1300L % 20_000) }
             } else {
                 a = if (v < 13.8) (if (harsh) 0.24 else 0.11) * G else 0.0
             }

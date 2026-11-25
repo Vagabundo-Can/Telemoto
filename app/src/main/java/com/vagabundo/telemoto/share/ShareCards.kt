@@ -120,9 +120,13 @@ object ShareCards {
 
     private fun statRow(c: Canvas, x: Float, y0: Float, w: Float, items: List<Pair<Pair<String, String>, Int>>, tpl: CardTemplate): Float {
         val col = w / items.size
+        // Değer sütuna sığmazsa yazı küçülür (16:9'da 4 sütun ~175 px)
+        val vp = Paint().apply { typeface = condensed; textSize = 64f }
+        val widest = items.maxOf { vp.measureText(it.first.second) }
+        val size = (64f * ((col - 16f) / widest).coerceAtMost(1f)).coerceAtLeast(36f)
         items.forEachIndexed { i, (lv, color) ->
             text(c, lv.first, x + i * col, y0, 22f, tpl.mute, bold = true, spacing = 0.08f)
-            text(c, lv.second, x + i * col, y0 + 70, 64f, color, cond = true)
+            text(c, lv.second, x + i * col, y0 + 70, size, color, cond = true)
         }
         return y0 + 80
     }
@@ -158,7 +162,10 @@ object ShareCards {
         val apex = g.maxByOrNull { abs(it.lean) } ?: return
         val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 5f; color = tpl.accent }
         c.drawCircle(px(apex), py(apex), 30f, ring)
-        text(c, "${abs(apex.lean).toInt()}° maks", px(apex) + 40, py(apex) + 12, 32f, tpl.accent, bold = true)
+        val label = "${abs(apex.lean).toInt()}° maks"
+        // Etiket harita alanından taşmasın: sağ kenara yakınsa noktanın soluna yaz
+        if (px(apex) + 220 > r.right + 40) textRight(c, label, px(apex) - 40, py(apex) + 12, 32f, tpl.accent)
+        else text(c, label, px(apex) + 40, py(apex) + 12, 32f, tpl.accent, bold = true)
     }
 
     private fun drawContours(c: Canvas, r: RectF, tpl: CardTemplate) {
