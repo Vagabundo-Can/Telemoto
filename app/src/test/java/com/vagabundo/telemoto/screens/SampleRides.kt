@@ -39,7 +39,7 @@ object SampleRides {
             var kMax = 0.0; var d = 0.0
             while (d < 80) { kMax = max(kMax, abs(kappa(s + d))); d += 5 }
             val vCorner = if (kMax < 1e-4) 33.0 else sqrt(G * kotlin.math.tan(Math.toRadians(42.0)) / kMax)
-            val vTarget = min(min(vCorner, 31.0), if (s < 200) 15.0 else 99.0)
+            val vTarget = min(min(vCorner, 25.0), if (s < 200) 15.0 else 99.0)
             val a = when {
                 v < vTarget - 0.5 -> min(0.28, (vTarget - v) * 0.12) * G
                 v > vTarget + 0.5 -> -min(0.62, (v - vTarget) * 0.25) * G

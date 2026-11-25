@@ -158,7 +158,7 @@ private fun WeekCard(rides: List<RideSummary>) {
     }.timeInMillis
     val wk = rides.filter { it.startEpochMs >= weekStart }
     val km = wk.sumOf { it.distanceM } / 1000.0
-    val eco = wk.filter { it.ecoScore != null }
+    val eco = wk.filter { it.mode == RideMode.ECO && it.ecoScore != null }
     val ecoAvg = if (eco.isEmpty()) null else (eco.sumOf { it.ecoScore!! * it.distanceM } / eco.sumOf { it.distanceM }).toInt()
     val maxLean = wk.maxOfOrNull { maxOf(it.maxLeanL, it.maxLeanR) }
     Panel(Modifier.fillMaxWidth()) {

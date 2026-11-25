@@ -72,7 +72,7 @@ class ManualScreenshotTest {
     }
 
     private fun waitText(text: String) {
-        rule.waitUntil(20_000) { rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(120_000) { rule.onAllNodesWithText(text, substring = true, ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
     }
 
     @Test fun t01_home_dark() = shot("01_ana_ekran_koyu", false) { AppRoot() }

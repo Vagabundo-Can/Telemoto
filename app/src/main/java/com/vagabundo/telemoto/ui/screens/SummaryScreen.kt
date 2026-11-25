@@ -94,7 +94,7 @@ fun SummaryScreen() {
     val from = buckets.first().from
     val to = buckets.last().to
     val inRange = all.filter { it.startEpochMs in from until to }
-    val eco = inRange.filter { it.ecoScore != null }
+    val eco = inRange.filter { it.mode == RideMode.ECO && it.ecoScore != null }
     fun wavg(xs: List<RideSummary>): Int? = if (xs.isEmpty() || xs.sumOf { it.distanceM } < 1) null else (xs.sumOf { it.ecoScore!! * it.distanceM } / xs.sumOf { it.distanceM }).toInt()
     val bars = buckets.map { b -> wavg(eco.filter { it.startEpochMs in b.from until b.to }) ?: 0 }
     val perf = inRange.filter { it.mode == RideMode.PERF }
