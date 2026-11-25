@@ -30,15 +30,16 @@ object SampleRides {
         var v = 0.0; var s = 0.0; var t = 0L
         val totalS = 24_000.0
         fun kappa(x: Double): Double {
-            val base = 0.0075 * sin(x / 260.0) + 0.0055 * sin(x / 97.0 + 1.3) + 0.0025 * sin(x / 41.0 + 0.4)
-            val straight = if ((x / 1500.0).toInt() % 3 == 2) 0.15 else 1.0
-            return base * straight
+            // Sıfır ortalamalı S virajlar (düğüm yok): R ≈ 45–120 m, aralarda düzlükler
+            val env = (0.55 + 0.45 * sin(x / 650.0)).coerceAtLeast(0.0)
+            val straight = if ((x / 1800.0).toInt() % 4 == 3) 0.1 else 1.0
+            return (0.021 * sin(x / 48.0) + 0.006 * sin(x / 19.0 + 0.7)) * env * straight + 0.0003 * sin(x / 2500.0)
         }
         while (s < totalS) {
             // ileri bak: 60 m önündeki en sert eğriliğe göre hedef hız
             var kMax = 0.0; var d = 0.0
             while (d < 80) { kMax = max(kMax, abs(kappa(s + d))); d += 5 }
-            val vCorner = if (kMax < 1e-4) 33.0 else sqrt(G * kotlin.math.tan(Math.toRadians(42.0)) / kMax)
+            val vCorner = if (kMax < 1e-4) 33.0 else sqrt(G * kotlin.math.tan(Math.toRadians(40.0)) / kMax)
             val vTarget = min(min(vCorner, 25.0), if (s < 200) 15.0 else 99.0)
             val a = when {
                 v < vTarget - 0.5 -> min(0.28, (vTarget - v) * 0.12) * G
